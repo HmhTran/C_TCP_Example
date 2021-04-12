@@ -15,6 +15,8 @@
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
+#define TIMEOUT_SEC      10
+
 #define LEN_ADDRESS      30
 #define NAME_ADDRESS     "\"addressOfRecord\""
 #define LEN_MAX_RECORD   700
@@ -87,7 +89,6 @@ int __cdecl main(void)
     }
 
     char resRec[LEN_MAX_RECORD + 1];
-    resRec[0] = 0;
 
     int statusSearch = 0;
 
@@ -163,6 +164,9 @@ int __cdecl main(void)
         return 1;
     }
 
+    DWORD timeout = TIMEOUT_SEC * 1000;
+    setsockopt(ClientSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+
     // Receive until the peer shuts down the connection
     do {
 
@@ -172,9 +176,10 @@ int __cdecl main(void)
             *(recvbuf + LEN_ADDRESS) = 0;
             printf("%s\n", recvbuf);
 
+            resRec[0] = 0;
             statusSearch = findRecord(recvbuf, memRec, resRec);
             if (statusSearch != 0) {
-                return 1;
+                printf("Error in searching\n");
             }
             printf("%s\n", resRec);
 
@@ -189,8 +194,21 @@ int __cdecl main(void)
             printf("Bytes sent: %d\n", iSendResult);
 
         }
-        else if (iResult == 0)
+        else if (iResult == 0) {
             printf("Connection closing...\n");
+        }
+        else if (iResult == SOCKET_ERROR) {
+            if (WSAGetLastError() == WSAETIMEDOUT) {
+                printf("Timeout\n");
+                printf("Connection closing...\n");
+            }
+            else {
+                printf("recv failed with error: %d\n", WSAGetLastError());
+                closesocket(ClientSocket);
+                WSACleanup();
+                return 1;
+            }
+        }
         else {
             printf("recv failed with error: %d\n", WSAGetLastError());
             closesocket(ClientSocket);

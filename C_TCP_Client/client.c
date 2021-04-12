@@ -23,7 +23,9 @@ int __cdecl main(int argc, char** argv)
     struct addrinfo* result = NULL,
         * ptr = NULL,
         hints;
-    const char* sendbuf = "this is a test";
+
+    const char* sendbuf = "014e9cc9ea34446a2b000100620005";
+
     char recvbuf[DEFAULT_BUFLEN];
     int iResult;
     int recvbuflen = DEFAULT_BUFLEN;
@@ -96,20 +98,22 @@ int __cdecl main(int argc, char** argv)
     printf("Bytes Sent: %ld\n", iResult);
 
     // shutdown the connection since no more data will be sent
-    iResult = shutdown(ConnectSocket, SD_SEND);
+    /*iResult = shutdown(ConnectSocket, SD_SEND);
     if (iResult == SOCKET_ERROR) {
         printf("shutdown failed with error: %d\n", WSAGetLastError());
         closesocket(ConnectSocket);
         WSACleanup();
         return 1;
-    }
+    }*/
 
     // Receive until the peer closes the connection
     do {
 
         iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-        if (iResult > 0)
+        if (iResult > 0) {
             printf("Bytes received: %d\n", iResult);
+            printf("%s\n", recvbuf);
+        }
         else if (iResult == 0)
             printf("Connection closed\n");
         else
