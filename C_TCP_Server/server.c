@@ -86,8 +86,6 @@ int __cdecl main(void)
         return 1;
     }
 
-    char* request = NULL;
-
     char resRec[LEN_MAX_RECORD + 1];
     resRec[0] = 0;
 
@@ -165,18 +163,23 @@ int __cdecl main(void)
         return 1;
     }
 
-    // No longer need server socket
-    closesocket(ListenSocket);
-
     // Receive until the peer shuts down the connection
     do {
 
         iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
         if (iResult > 0) {
             printf("Bytes received: %d\n", iResult);
+            *(recvbuf + LEN_ADDRESS) = 0;
+            printf("%s\n", recvbuf);
+
+            statusSearch = findRecord(recvbuf, memRec, resRec);
+            if (statusSearch != 0) {
+                return 1;
+            }
+            printf("%s\n", resRec);
 
             // Echo the buffer back to the sender
-            iSendResult = send(ClientSocket, recvbuf, iResult, 0);
+            iSendResult = send(ClientSocket, resRec, LEN_MAX_RECORD, 0);
             if (iSendResult == SOCKET_ERROR) {
                 printf("send failed with error: %d\n", WSAGetLastError());
                 closesocket(ClientSocket);
@@ -185,10 +188,6 @@ int __cdecl main(void)
             }
             printf("Bytes sent: %d\n", iSendResult);
 
-            /*statusSearch = findRecord(request, memRec, resRec);
-            if (statusSearch != 0) {
-                return 1;
-            }*/
         }
         else if (iResult == 0)
             printf("Connection closing...\n");
