@@ -15,8 +15,84 @@
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
+#define LEN_ADDRESS      30
+#define NAME_ADDRESS     "\"addressOfRecord\""
+#define LEN_MAX_RECORD   700
+
+int ae_load_file_to_memory(const char* filename, char** result) {
+    int size = 0;
+    FILE* f;
+    errno_t err = fopen_s(&f, filename, "rb");
+    if (err != 0)
+    {
+        *result = NULL;
+        return -1; // -1 means file opening fail 
+    }
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    *result = (char*)malloc(size + 1);
+    if (size != fread(*result, sizeof(char), size, f))
+    {
+        free(*result);
+        return -2; // -2 means file reading fail 
+    }
+    fclose(f);
+    (*result)[size] = 0;
+    return size;
+}
+
+int findRecord(char* req, char* mem, char* res) {
+    int count = 0;
+
+    char* ptrMemCur = mem;
+    char* ptrAorCur;
+
+    char* address = malloc(LEN_ADDRESS);
+    int lenNameAddress = strlen(NAME_ADDRESS);
+
+    int lenRecord = 0;
+
+    while (*(ptrMemCur + 1) != 0) {
+        ptrAorCur = strstr(ptrMemCur, NAME_ADDRESS);
+        if (ptrAorCur == 0) {
+            printf("Error reading memory\n");
+            return 1;
+        }
+        memcpy(address, ptrAorCur + lenNameAddress + 2, LEN_ADDRESS);
+        *(address + LEN_ADDRESS) = 0;
+
+        ptrMemCur = strstr(ptrAorCur, "\n");
+
+        if (strcmp(address, req) == 0) {
+            lenRecord = ptrMemCur - ptrAorCur + 1;
+            memcpy(res, ptrAorCur - 1, lenRecord);
+            *(res + lenRecord) = 0;
+            printf("%s\n", res);
+            break;
+        }
+    }
+
+    return 0;
+}
+
 int __cdecl main(void)
 {
+    char* memRec;
+    int size;
+    size = ae_load_file_to_memory("../Data/regs", &memRec);
+    if (size < 0) {
+        puts("Error loading file");
+        return 1;
+    }
+
+    char* request = NULL;
+
+    char resRec[LEN_MAX_RECORD + 1];
+    resRec[0] = 0;
+
+    int statusSearch = 0;
+
     WSADATA wsaData;
     int iResult;
 
@@ -108,6 +184,11 @@ int __cdecl main(void)
                 return 1;
             }
             printf("Bytes sent: %d\n", iSendResult);
+
+            /*statusSearch = findRecord(request, memRec, resRec);
+            if (statusSearch != 0) {
+                return 1;
+            }*/
         }
         else if (iResult == 0)
             printf("Connection closing...\n");
